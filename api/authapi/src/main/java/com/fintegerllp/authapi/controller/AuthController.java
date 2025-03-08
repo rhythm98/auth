@@ -1,0 +1,103 @@
+package com.fintegerllp.authapi.controller;
+
+import com.fintegerllp.authapi.dto.ApiResponseDto;
+import com.fintegerllp.authapi.dto.LoginDto;
+import com.fintegerllp.authapi.dto.RegistrationDto;
+import com.fintegerllp.authapi.dto.UserDto;
+import com.fintegerllp.authapi.exception.EmailAlreadyExistsException;
+import com.fintegerllp.authapi.exception.KeycloakIntegrationException;
+import com.fintegerllp.authapi.service.UserService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/auth")
+@RequiredArgsConstructor
+@Slf4j
+@CrossOrigin(origins = "${app.cors.allowed-origins}", allowCredentials = "true")
+public class AuthController {
+
+    private final UserService userService;
+
+    @Value("${keycloak.auth-server-url}")
+    private String keycloakServerUrl;
+
+    @Value("${keycloak.realm}")
+    private String realm;
+
+    @Value("${keycloak.resource}")
+    private String clientId;
+
+    /**
+     * Register a new user
+     *
+     * @param registrationDto Registration data
+     * @return ApiResponseDto<UserDto> Response with user data
+     */
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponseDto<UserDto>> register(@Valid @RequestBody RegistrationDto registrationDto) {
+        try {
+            UserDto userDto = userService.registerUser(registrationDto);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponseDto.success("User registered successfully", userDto));
+        } catch (EmailAlreadyExistsException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ApiResponseDto.error(e.getMessage()));
+        } catch (KeycloakIntegrationException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponseDto.error("Authentication service error: " + e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error registering user: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponseDto.error("Failed to register user"));
+        }
+    }
+
+    /**
+     * Provides client with Keycloak configuration
+     *
+     * @return ApiResponseDto<Map<String, String>> Keycloak configuration
+     */
+    @GetMapping("/config")
+    public ResponseEntity<ApiResponseDto<Map<String, String>>> getKeycloakConfig() {
+        Map<String, String> config = new HashMap<>();
+        config.put("url", keycloakServerUrl);
+        config.put("realm", realm);
+        config.put("clientId", clientId);
+
+        return ResponseEntity.ok(ApiResponseDto.success(config));
+    }
+
+    /**
+     * Login endpoint (for documentation only, actual login is handled by Keycloak)
+     *
+     * @param loginDto Login data
+     * @return ApiResponseDto<String> Login information
+     */
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponseDto<String>> login(@Valid @RequestBody LoginDto loginDto) {
+        // This endpoint is for documentation purposes only
+        // Actual login is handled by Keycloak on the client side
+        return ResponseEntity.ok(
+                ApiResponseDto.success("Login should be performed on the client using Keycloak JS Adapter", null));
+    }
+
+    /**
+     * Get current authenticated user
+     *
+     * @return ApiResponseDto<UserDto> Current user data
+     */
+    @GetMapping("/user")
+    public ResponseEntity<ApiResponseDto<UserDto>> getCurrentUser() {
+        UserDto userDto = userService.getCurrentUser();
+        return ResponseEntity.ok(ApiResponseDto.success(userDto));
+    }
+}

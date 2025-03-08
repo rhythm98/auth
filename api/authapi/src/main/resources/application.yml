@@ -1,0 +1,68 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: authapi
+  datasource:
+    url: jdbc:postgresql://localhost:5432/auth_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # Uncomment if using MongoDB
+  # data:
+  #   mongodb:
+  #     uri: mongodb://localhost:27017/auth_app
+  #     auto-index-creation: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: "${keycloak.auth-server-url}/realms/${keycloak.realm}"
+          jwk-set-uri: "${keycloak.auth-server-url}/realms/${keycloak.realm}/protocol/openid-connect/certs"
+
+keycloak:
+#  cors: true
+#  cors-allowed-origins: http://localhost:3000
+  auth-server-url: http://localhost:8180/auth
+  realm: fintegerllp
+  resource: uaetaxlaws
+  credentials:
+    secret: GQxDknRo8QaNVwCqvMnakcreAmz4cInR
+  use-resource-role-mappings: true
+  bearer-only: true
+
+  admin:
+    client-id: admin-cli
+    username: admin
+    password: admin
+    realm: master
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.keycloak: DEBUG
+    com.example: DEBUG
+
+management:
+  endpoints:
+    web:
+      cors:
+        allowed-origins: http://localhost:3000
